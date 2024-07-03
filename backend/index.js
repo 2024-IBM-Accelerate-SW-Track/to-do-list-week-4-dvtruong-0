@@ -9,10 +9,8 @@ const fs = require("fs").promises;
 
 //reading the environment for MongoDB
 const mongoURI = process.env.MONGO_URI;
-const mongoActive = (mongoURI) && (process.env.USE_MONGO == 'true');
-console.log(process.env);
-console.log(mongoURI);
-console.log(mongoActive);
+const mongoActive = (process.env.USE_MONGO == 'true');
+console.log(process.env.USE_MONGO)
 
 //setting up mongo client and url
 const { MongoClient } = require('mongodb');
