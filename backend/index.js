@@ -1,4 +1,5 @@
 //importing external modules and reading the environment variables
+require('dotenv').config();
 const express = require("express"),
        app = express(),
        port = process.env.PORT || 8080,
@@ -7,8 +8,10 @@ const bodyParser = require('body-parser');
 const fs = require("fs").promises;
 
 //reading the environment for MongoDB
-const mongoURI = process.env.mongoURI;
-const mongoActive = mongoURI && (process.env.USE_MONGO == 'true');
+const mongoURI = process.env.MONGO_URI;
+const mongoActive = (mongoURI) && (process.env.USE_MONGO == 'true');
+console.log(process.env);
+console.log(mongoURI);
 console.log(mongoActive);
 
 //setting up mongo client and url
