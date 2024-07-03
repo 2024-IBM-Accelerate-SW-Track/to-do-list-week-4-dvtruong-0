@@ -101,6 +101,10 @@ async function loadItems(request, response) {
     }
 }
 
+async function deleteItem(request, response) {
+    
+}
+
 //shutdown client connetion when app closes
 const disconnectMongoDb = async () => {
     console.log("Disconnecting from MongoDb...");

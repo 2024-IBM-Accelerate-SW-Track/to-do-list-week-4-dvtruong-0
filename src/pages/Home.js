@@ -21,7 +21,7 @@ class Home extends Component {
     try {
       const response = await Axios.post('http://localhost:8080/load/items');
       const loadedTodos = response.data.map(todo => ({
-        id : Math.random(),
+        id : todo.ID,
         content: todo.Task,  // Assuming the field is `Task` in the backend
         currentdate: new Date(todo.Current_date),  // Assuming the field is `Current_date` in the backend
         duedate: new Date(todo.Due_date)  // Assuming the field is `Due_date` in the backend
