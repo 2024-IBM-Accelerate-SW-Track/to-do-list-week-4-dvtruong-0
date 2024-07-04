@@ -74,24 +74,31 @@ async function addItem (request, response) {
         if (mongoActive && todoCollection) {
             await todoCollection.insertOne(newTask);
             console.log('successfully inserted task into MongoDb database');
-        } else {
-            const data = await fs.readFile("database.json");
-            const json = JSON.parse(data);
-            json.push(newTask);
-            await fs.writeFile("database.json", JSON.stringify(json))
-            console.log('Successfully wrote to file') 
-            response.sendStatus(200)
         }
+        const data = await fs.readFile("database.json");
+        const json = JSON.parse(data);
+        json.push(newTask);
+        await fs.writeFile("database.json", JSON.stringify(json))
+        console.log('Successfully wrote to file') 
+        response.sendStatus(200)
     } catch (err) {
         console.log("error: ", err)
         response.sendStatus(500)
     }
 }
 
+/**
+ * This function loads items from either the mongo database or the file database.json
+ * for usage within the frontend
+ * @param {*Request from frontend} request 
+ * @param {*Response from backend/server} response 
+ * @returns 
+ */
 async function loadItems(request, response) {
     let loadedList;
     try {
         if (mongoActive && todoCollection) {
+            await synchronizeMongoWithFile();
             loadedList = await todoCollection.find({}).toArray();
         } else {
             const dataFromFile = await fs.readFile('database.json', 'utf-8');
@@ -100,6 +107,44 @@ async function loadItems(request, response) {
         return response.json(loadedList)
     } catch(error) {
         console.log('Erroring when trying to load to do list items', error);
+    }
+}
+
+/**
+ * Helper for loadItems: will synchronize the mongo databse and file database once the app is loaded
+ */
+async function synchronizeMongoWithFile() {
+    try {
+        const mongoData = await todoCollection.find({}).toArray();
+
+        const fileData = await fs.readFile('database.json', 'utf-8');
+        const fileJson = JSON.parse(fileData);
+
+        const itemsToAdd = fileJson.filter(item => !mongoData.some(mongoItem => mongoItem.ID === item.ID));
+        const itemsToUpdate = fileJson.filter(item => mongoData.some(mongoItem => mongoItem.ID === item.ID && !isEqual(mongoItem, item)));
+        const itemsToDelete = mongoData.filter(mongoItem => !fileJson.some(item => item.ID === mongoItem.ID));
+
+        // Add new items to MongoDB
+        if (itemsToAdd.length > 0) {
+            await todoCollection.insertMany(itemsToAdd);
+            console.log(`Added ${itemsToAdd.length} items to MongoDB`);
+        }
+
+        // Update existing items in MongoDB
+        for (const item of itemsToUpdate) {
+            await todoCollection.updateOne({ ID: item.ID }, { $set: item });
+            console.log(`Updated item with ID ${item.ID} in MongoDB`);
+        }
+
+        // Delete items from MongoDB
+        for (const item of itemsToDelete) {
+            await todoCollection.deleteOne({ ID: item.ID });
+            console.log(`Deleted item with ID ${item.ID} from MongoDB`);
+        }
+
+        console.log("MongoDB synchronization with file database.json complete");
+    } catch(error) {
+        console.log('Error in synchornization: ', error);
     }
 }
 
@@ -117,21 +162,20 @@ async function deleteItem(request, response) {
         if (mongoActive && todoCollection) {
             const deleteResultMongo = await todoCollection.deleteOne({ID : idToDelete});
             console.log('Deleted documents =>', deleteResultMongo);
-        } else {
-            //else we should read from a file on our computer and delete from there using 
-            //filtering 
-            const dataFromFile = await fs.readFile('database.json', 'utf-8');
-            let currentTodos = JSON.parse(dataFromFile);
+        }
+        //we should read from a file on our computer and delete from there using 
+        //filtering regardless of whether or not the MongoDb is active
+        const dataFromFile = await fs.readFile('database.json', 'utf-8');
+        let currentTodos = JSON.parse(dataFromFile);
 
-            const updatedList = currentTodos.filter(todo => todo.ID !== idToDelete);
-            if (updatedList.length < currentTodos.length) {
-                await fs.writeFile('database.json', JSON.stringify(updatedList));
-                console.log('Deleted task with id ' + {idToDelete} + ' without any issues');
-                response.sendStatus(200);
-            } else {
-                console.log('Could not delete task with id ' + {idToDelete} + ' because it could not be found');
-                response.sendStatus(400);
-            }
+        const updatedList = currentTodos.filter(todo => todo.ID !== idToDelete);
+        if (updatedList.length < currentTodos.length) {
+            await fs.writeFile('database.json', JSON.stringify(updatedList));
+            console.log('Deleted task with id ' + {idToDelete} + ' without any issues');
+            response.sendStatus(200);
+        } else {
+            console.log('Could not delete task with id ' + {idToDelete} + ' because it could not be found');
+             response.sendStatus(400);
         }
     } catch(error){
         console.log("Error when trying to delete ", error);
