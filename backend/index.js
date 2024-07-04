@@ -8,7 +8,8 @@ const bodyParser = require('body-parser');
 const fs = require("fs").promises;
 
 //reading the environment for MongoDB
-const mongoURI = process.env.MONGO_URI;
+//Question: Is there some way to make this automatic? As in, I wouldn't have to manually create a .env file and 
+//set the variable myself
 const mongoActive = (process.env.USE_MONGO == 'true');
 console.log(process.env.USE_MONGO)
 
@@ -50,8 +51,9 @@ app.get("/", (req, res) => {
 //makes a call to the addItem function once a POST request 
 //(which causes a change in the server) to 
 //the specified route is made 
-app.post("/add/item", addItem)
-app.post("/load/items", loadItems)
+app.post("/add/item", addItem);
+app.post("/load/items", loadItems);
+app.post('/delete/item', deleteItem);
 
 //takes in a request from the app, which reqpresents a todo item
 //the body is converted to a json object and saved into a file 
@@ -101,8 +103,39 @@ async function loadItems(request, response) {
     }
 }
 
+/**
+ * This function will delete an item with a particular ID. IDs are unique
+ * in the use case of this function, so we are only able to delete one at a time.
+ * @param {*Request from the frontend} request 
+ * @param {*Response from the server/backend} response 
+ */
 async function deleteItem(request, response) {
-    
+    const idToDelete = request.body.jsonObject.id;
+    console.log(idToDelete);
+    try {
+        //if mongoActive, then delete from the mongo database and log it in the console
+        if (mongoActive && todoCollection) {
+            const deleteResultMongo = await todoCollection.deleteOne({ID : idToDelete});
+            console.log('Deleted documents =>', deleteResultMongo);
+        } else {
+            //else we should read from a file on our computer and delete from there using 
+            //filtering 
+            const dataFromFile = await fs.readFile('database.json', 'utf-8');
+            let currentTodos = JSON.parse(dataFromFile);
+
+            const updatedList = currentTodos.filter(todo => todo.ID !== idToDelete);
+            if (updatedList.length < currentTodos.length) {
+                await fs.writeFile('database.json', JSON.stringify(updatedList));
+                console.log('Deleted task with id ' + {idToDelete} + ' without any issues');
+                response.sendStatus(200);
+            } else {
+                console.log('Could not delete task with id ' + {idToDelete} + ' because it could not be found');
+                response.sendStatus(400);
+            }
+        }
+    } catch(error){
+        console.log("Error when trying to delete ", error);
+    }
 }
 
 //shutdown client connetion when app closes
