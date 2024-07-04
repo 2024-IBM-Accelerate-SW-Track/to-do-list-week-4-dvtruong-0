@@ -21,7 +21,7 @@ class Home extends Component {
     try {
       const response = await Axios.post('http://localhost:8080/load/items');
       const loadedTodos = response.data.map(todo => ({
-        id : Math.random(),
+        id : todo.ID,
         content: todo.Task,  // Assuming the field is `Task` in the backend
         currentdate: new Date(todo.Current_date),  // Assuming the field is `Current_date` in the backend
         duedate: new Date(todo.Due_date)  // Assuming the field is `Due_date` in the backend
@@ -37,11 +37,22 @@ class Home extends Component {
 
   // the deleteTodo function simply creates a new array that removes the todo item selected from the user from the list
   // and then updates the state with the new list.
-  deleteTodo = (id) => {
+  deleteTodo = (idToDelete) => {
+    //Deleting the item with the id within the database
+    const jsonObject = {id : idToDelete};
+    Axios({
+      method: 'POST',
+      url: 'http://localhost:8080/delete/item',
+      data: {jsonObject}, 
+      headers: {
+        "Content-Type": "application/json"}
+    }).then(res => {console.log(res.data.message)})
+    .catch(error => {console.log('An error occured when trying to delete item(s): ', error)});
+
     // Within this function, the item's id is being utilized in order to filter it out from the todo list
     // and then updates the state with a new list
     const todos = this.state.todos.filter((todo) => {
-      return todo.id !== id;
+      return todo.id !== idToDelete;
     });
     this.setState({
       todos: todos,

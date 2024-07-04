@@ -1,4 +1,5 @@
 //importing external modules and reading the environment variables
+require('dotenv').config();
 const express = require("express"),
        app = express(),
        port = process.env.PORT || 8080,
@@ -7,9 +8,10 @@ const bodyParser = require('body-parser');
 const fs = require("fs").promises;
 
 //reading the environment for MongoDB
-const mongoURI = process.env.mongoURI;
-const mongoActive = mongoURI && (process.env.USE_MONGO == 'true');
-console.log(mongoActive);
+//Question: Is there some way to make this automatic? As in, I wouldn't have to manually create a .env file and 
+//set the variable myself
+const mongoActive = (process.env.USE_MONGO == 'true');
+console.log(process.env.USE_MONGO)
 
 //setting up mongo client and url
 const { MongoClient } = require('mongodb');
@@ -49,8 +51,9 @@ app.get("/", (req, res) => {
 //makes a call to the addItem function once a POST request 
 //(which causes a change in the server) to 
 //the specified route is made 
-app.post("/add/item", addItem)
-app.post("/load/items", loadItems)
+app.post("/add/item", addItem);
+app.post("/load/items", loadItems);
+app.post('/delete/item', deleteItem);
 
 //takes in a request from the app, which reqpresents a todo item
 //the body is converted to a json object and saved into a file 
@@ -71,24 +74,31 @@ async function addItem (request, response) {
         if (mongoActive && todoCollection) {
             await todoCollection.insertOne(newTask);
             console.log('successfully inserted task into MongoDb database');
-        } else {
-            const data = await fs.readFile("database.json");
-            const json = JSON.parse(data);
-            json.push(newTask);
-            await fs.writeFile("database.json", JSON.stringify(json))
-            console.log('Successfully wrote to file') 
-            response.sendStatus(200)
         }
+        const data = await fs.readFile("database.json");
+        const json = JSON.parse(data);
+        json.push(newTask);
+        await fs.writeFile("database.json", JSON.stringify(json))
+        console.log('Successfully wrote to file') 
+        response.sendStatus(200)
     } catch (err) {
         console.log("error: ", err)
         response.sendStatus(500)
     }
 }
 
+/**
+ * This function loads items from either the mongo database or the file database.json
+ * for usage within the frontend
+ * @param {*Request from frontend} request 
+ * @param {*Response from backend/server} response 
+ * @returns 
+ */
 async function loadItems(request, response) {
     let loadedList;
     try {
         if (mongoActive && todoCollection) {
+            await synchronizeMongoWithFile();
             loadedList = await todoCollection.find({}).toArray();
         } else {
             const dataFromFile = await fs.readFile('database.json', 'utf-8');
@@ -97,6 +107,78 @@ async function loadItems(request, response) {
         return response.json(loadedList)
     } catch(error) {
         console.log('Erroring when trying to load to do list items', error);
+    }
+}
+
+/**
+ * Helper for loadItems: will synchronize the mongo databse and file database once the app is loaded
+ */
+async function synchronizeMongoWithFile() {
+    try {
+        const mongoData = await todoCollection.find({}).toArray();
+
+        const fileData = await fs.readFile('database.json', 'utf-8');
+        const fileJson = JSON.parse(fileData);
+
+        const itemsToAdd = fileJson.filter(item => !mongoData.some(mongoItem => mongoItem.ID === item.ID));
+        const itemsToUpdate = fileJson.filter(item => mongoData.some(mongoItem => mongoItem.ID === item.ID && !isEqual(mongoItem, item)));
+        const itemsToDelete = mongoData.filter(mongoItem => !fileJson.some(item => item.ID === mongoItem.ID));
+
+        // Add new items to MongoDB
+        if (itemsToAdd.length > 0) {
+            await todoCollection.insertMany(itemsToAdd);
+            console.log(`Added ${itemsToAdd.length} items to MongoDB`);
+        }
+
+        // Update existing items in MongoDB
+        for (const item of itemsToUpdate) {
+            await todoCollection.updateOne({ ID: item.ID }, { $set: item });
+            console.log(`Updated item with ID ${item.ID} in MongoDB`);
+        }
+
+        // Delete items from MongoDB
+        for (const item of itemsToDelete) {
+            await todoCollection.deleteOne({ ID: item.ID });
+            console.log(`Deleted item with ID ${item.ID} from MongoDB`);
+        }
+
+        console.log("MongoDB synchronization with file database.json complete");
+    } catch(error) {
+        console.log('Error in synchornization: ', error);
+    }
+}
+
+/**
+ * This function will delete an item with a particular ID. IDs are unique
+ * in the use case of this function, so we are only able to delete one at a time.
+ * @param {*Request from the frontend} request 
+ * @param {*Response from the server/backend} response 
+ */
+async function deleteItem(request, response) {
+    const idToDelete = request.body.jsonObject.id;
+    console.log(idToDelete);
+    try {
+        //if mongoActive, then delete from the mongo database and log it in the console
+        if (mongoActive && todoCollection) {
+            const deleteResultMongo = await todoCollection.deleteOne({ID : idToDelete});
+            console.log('Deleted documents =>', deleteResultMongo);
+        }
+        //we should read from a file on our computer and delete from there using 
+        //filtering regardless of whether or not the MongoDb is active
+        const dataFromFile = await fs.readFile('database.json', 'utf-8');
+        let currentTodos = JSON.parse(dataFromFile);
+
+        const updatedList = currentTodos.filter(todo => todo.ID !== idToDelete);
+        if (updatedList.length < currentTodos.length) {
+            await fs.writeFile('database.json', JSON.stringify(updatedList));
+            console.log('Deleted task with id ' + {idToDelete} + ' without any issues');
+            response.sendStatus(200);
+        } else {
+            console.log('Could not delete task with id ' + {idToDelete} + ' because it could not be found');
+             response.sendStatus(400);
+        }
+    } catch(error){
+        console.log("Error when trying to delete ", error);
     }
 }
 
