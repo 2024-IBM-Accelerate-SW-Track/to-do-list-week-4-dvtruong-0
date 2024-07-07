@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import "./About.css";
-import profile_pic from "../assets/profile_pic.jpg";
+import profile_pic from "../assets/me.png";
 
 export default class About extends Component {
   render() {
@@ -18,10 +18,12 @@ export default class About extends Component {
         </div>
         <div className="split right">
           <div className="centered">
-            <div className="name_title">Your Name</div>
+            <div className="name_title">Derek Truong</div>
             <div className="brief_description">
-              Tell us about yourself in a few sentences. Tell us your interests
-              and say a fun fact about yourself.
+              Hello! My name is Derek Truong, and I am a rising junior at Brown University studying computer engineering. 
+              I love anything tech, which inspired my pursuits in school with goals of doing software/hardware engineering and 
+              possibly working with quantum computers in the future. As for my personal interests, I love to dabble in basketball, 
+              anime, history, and video games.
             </div>
           </div>
         </div>
