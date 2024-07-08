@@ -37,10 +37,11 @@ class Home extends Component {
 
   // the deleteTodo function simply creates a new array that removes the todo item selected from the user from the list
   // and then updates the state with the new list.
-  deleteTodo = (idToDelete) => {
+  deleteTodo = async (idToDelete) => {
     //Deleting the item with the id within the database
     const jsonObject = {id : idToDelete};
-    Axios({
+    console.log(idToDelete);
+    await Axios({
       method: 'POST',
       url: 'http://localhost:8080/delete/item',
       data: {jsonObject}, 
@@ -70,6 +71,7 @@ class Home extends Component {
     // This solution works for a small application but a more complex hashing function should be used when
     // dealing with a larger data sensitive project.
     todo.id = Math.random();
+    console.log("Newly added ID", todo.id);
     // Create a array that contains the current array and the new todo item
     let new_list = [...this.state.todos, todo];
     // Update the local state with the new array.

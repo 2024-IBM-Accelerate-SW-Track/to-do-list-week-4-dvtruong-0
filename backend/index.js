@@ -76,7 +76,12 @@ async function addItem (request, response) {
             console.log('successfully inserted task into MongoDb database');
         }
         const data = await fs.readFile("database.json");
+        
         const json = JSON.parse(data);
+        const isDuplicate = json.some(todo => todo.Task === newTask.Task);
+        if (isDuplicate) {
+            return;
+        }
         json.push(newTask);
         await fs.writeFile("database.json", JSON.stringify(json))
         console.log('Successfully wrote to file') 
@@ -156,7 +161,7 @@ async function synchronizeMongoWithFile() {
  */
 async function deleteItem(request, response) {
     const idToDelete = request.body.jsonObject.id;
-    console.log(idToDelete);
+    console.log('Deleting id:', idToDelete);
     try {
         //if mongoActive, then delete from the mongo database and log it in the console
         if (mongoActive && todoCollection) {

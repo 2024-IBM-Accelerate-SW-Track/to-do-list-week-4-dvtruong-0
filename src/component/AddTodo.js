@@ -37,17 +37,19 @@ class AddTodo extends Component {
   // event.preventDefault() is called to prevents default event behavior like refreshing the browser.
   // this.props.addTodo(this.state) passes the current state (or user input and current date/time) into the addTodo function defined
   // in the Home.js file which then adds the input into the list.
-  handleSubmit = (event) => {
+  handleSubmit = async (event) => {
     event.preventDefault();
 
     if (this.state.content.trim()) {
+      
+      this.props.addTodo(this.state);
       const jsonObject = {
         id: this.state.id,
         task: this.state.content,
         currentDate: this.state.date,
         dueDate: this.state.duedate
         };
-      Axios({
+      await Axios({
         method: "POST",
         url: "http://localhost:8080/add/item",
         data: {jsonObject},
@@ -57,9 +59,6 @@ class AddTodo extends Component {
        }).then(res => {
           console.log(res.data.message);
        });
-      
-      this.props.addTodo(this.state);
-
       this.setState({
         content: "",
         date: "",
