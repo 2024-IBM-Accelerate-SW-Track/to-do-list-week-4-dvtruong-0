@@ -16,33 +16,32 @@ afterEach(() => {
   container = null;
 });
 
-
-test('test that we have an Add button', () => {
+test('test that we have an Add button', async () => {
   render(<App/>);
   const element = screen.getByRole('button', {name: /Add/i});
   expect(element).toBeInTheDocument();
 });
 
-test('test that there is an input field for task names', () => {
+test('test that there is an input field for task names', async () => {
   render(<App/>);
   const element = screen.getByRole('textbox', {name: /Add New Item/i});
   expect(element).toBeInTheDocument();
 });
 
-test('test that there is an input field for due dates', () => {
+test('test that there is an input field for due dates', async () => {
   render(<App/>);
   const element = screen.getByPlaceholderText("mm/dd/yyyy");
   expect(element).toBeInTheDocument();
 });
 
-test('test for no tasks text', () => {
+test('test for no tasks text', async () => {
   render(<App/>);
   const check = screen.getByText(/You have no todo's left/i)
   expect(check).toBeInTheDocument();
 });
 
 
-test('test that App component renders Task', () => {
+test('test that App component renders Task', async () => {
   render(<App />);
   const inputTask = screen.getByRole('textbox', {name: /Add New Item/i})
   const inputDate = screen.getByPlaceholderText("mm/dd/yyyy")
@@ -55,7 +54,7 @@ test('test that App component renders Task', () => {
  });
 
 
- test('test that App component doesn\'t render dupicate Task', () => {
+ test('test that App component doesn\'t render dupicate Task', async () => {
   render(<App />);
   const inputTask = screen.getByRole('textbox', {name: /Add New Item/i})
   const inputDate = screen.getByPlaceholderText("mm/dd/yyyy")
@@ -70,7 +69,7 @@ test('test that App component renders Task', () => {
   expect(check.length).toBe(1);
  });
 
- test('test that App component doesn\'t add a blank task', () => {
+ test('test that App component doesn\'t add a blank task', async () => {
   render(<App />);
   const element = screen.getByRole('button', {name: /Add/i}) ;
   fireEvent.click(element)
@@ -78,7 +77,7 @@ test('test that App component renders Task', () => {
   expect(check).toBeInTheDocument();
  });
  
- test('test that App component doesn\'t add a task without task name', () => {
+ test('test that App component doesn\'t add a task without task name', async () => {
   render(<App />);
   const inputDate = screen.getByPlaceholderText("mm/dd/yyyy")
   const element = screen.getByRole('button', {name: /Add/i}) ;
@@ -88,7 +87,7 @@ test('test that App component renders Task', () => {
   expect(check).toBeInTheDocument();
  });
 
- test('test that App component doesn\'t add a task without due date', () => {
+ test('test that App component doesn\'t add a task without due date',async () => {
   render(<App />);
   const inputTask = screen.getByRole('textbox', {name: /Add New Item/i})
   const element = screen.getByRole('button', {name: /Add/i}) ;
@@ -100,7 +99,7 @@ test('test that App component renders Task', () => {
 
 
 
- test('test that App component can be deleted thru checkbox', () => {
+ test('test that App component can be deleted thru checkbox', async () => {
   render(<App />);
   const inputTask = screen.getByRole('textbox', {name: /Add New Item/i})
   const inputDate = screen.getByPlaceholderText("mm/dd/yyyy")
@@ -115,7 +114,7 @@ test('test that App component renders Task', () => {
  });
 
 
- test('test that App component renders different colors for past due events', () => {
+ test('test that App component renders different colors for past due events', async () => {
   render(<App />);
   const inputTask = screen.getByRole('textbox', {name: /Add New Item/i})
   const inputDate = screen.getByPlaceholderText("mm/dd/yyyy")
@@ -131,3 +130,25 @@ test('test that App component renders Task', () => {
 
   expect(mathCheck == historyCheck).toBe(false);
  });
+
+ test('todo items persist on reload', async () => {
+  //make sure the run the backend before running this test
+  const { unmount } = render(<App/>);
+
+  //add a todo item
+  const inputTask = screen.getByRole('textbox', {name: /Add New Item/i})
+  const inputDate = screen.getByPlaceholderText("mm/dd/yyyy")
+  const element = screen.getByRole('button', {name: /Add/i}) ;
+
+  fireEvent.change(inputTask, {target: {value: "blank"}});
+  fireEvent.change(inputDate, {target : {value: '09/21/2025'}});
+  fireEvent.click(element);
+
+  expect(screen.getByText('blank')).toBeInTheDocument();
+
+  //re-render to simulate a refresh
+  unmount();
+  render(<App/>);
+
+  expect(screen.getByText('blank')).toBeInTheDocument();
+ })
